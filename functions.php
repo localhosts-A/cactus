@@ -74,13 +74,16 @@ function Projects($sorts = NULL) {
         $list = explode("\r\n", $options->Projects);
         foreach ($list as $val) {
             list($name, $url, $description, $sort) = explode("|", $val);
+            $safeName = htmlspecialchars($name, ENT_QUOTES, 'UTF-8');
+            $safeUrl = filter_var($url, FILTER_VALIDATE_URL) ? htmlspecialchars($url, ENT_QUOTES, 'UTF-8') : '';
+            $safeDesc = htmlspecialchars($description, ENT_QUOTES, 'UTF-8');
             if ($sorts) {
                 $arr = explode("|", $sorts);
                 if ($sort && in_array($sort, $arr)) {
-                    $Project .= $url ? '<li class="project-item"><a href="'.$url.'" target="_blank">'.$name.'</a>: '.$description.'</li>' : '<li class="project-item">'.$name.': '.$description.'</li>';
+                    $Project .= $safeUrl ? '<li class="project-item"><a href="'.$safeUrl.'" target="_blank">'.$safeName.'</a>: '.$safeDesc.'</li>' : '<li class="project-item">'.$safeName.': '.$safeDesc.'</li>';
                 }
             } else {
-                $Project .= $url ? '<li class="project-item"><a href="'.$url.'" target="_blank">'.$name.'</a>: '.$description.'</li>' : '<li class="project-item">'.$name.': '.$description.'</li>';
+                $Project .= $safeUrl ? '<li class="project-item"><a href="'.$safeUrl.'" target="_blank">'.$safeName.'</a>: '.$safeDesc.'</li>' : '<li class="project-item">'.$safeName.': '.$safeDesc.'</li>';
             }
         }
     }
@@ -478,7 +481,7 @@ function commentAtContent($coid)
         $arow = $db->fetchRow($db->select('author')->from('table.comments')
             ->where('coid = ? AND (status = ? OR status = ?)', $parent, 'approved','waiting'));
         $author = $arow['author'];
-        $href = '<p><a  href="#comment-' . $parent . '">@' . $author . '</a> ';
+        $href = '<p><a  href="#comment-' . $parent . '">@' . htmlspecialchars($author, ENT_QUOTES, 'UTF-8') . '</a> ';
         return $href;
     } else {
         return '';
@@ -488,25 +491,26 @@ function commentAtContent($coid)
 //算术验证评论
 
 function spam_protection_math(){
-    $num1=1;
+    $num1=rand(1,9);
     $num2=rand(1,9);
+    if (!session_id()) session_start();
+    $_SESSION['spam_num1'] = $num1;
+    $_SESSION['spam_num2'] = $num2;
     echo "$num1 + $num2 = ";
     echo "<input type=\"text\" name=\"sum\" class=\"vnick vinput\" value=\"\" size=\"25\" tabindex=\"4\" style=\" width:70px;\" placeholder=\"计算结果\">\n";
-    echo "<input type=\"hidden\" name=\"num1\" value=\"$num1\">\n";
-    echo "<input type=\"hidden\" name=\"num2\" value=\"$num2\">";
 }
 function spam_protection_pre($comment, $post, $result){
-    if(isset($_POST['sum'])){$sum=$_POST['sum'];}
-    switch($sum){
-        case $_POST['num1']+$_POST['num2']:
-        break;
-        case null:
+    if (!session_id()) session_start();
+    $num1 = isset($_SESSION['spam_num1']) ? (int)$_SESSION['spam_num1'] : 0;
+    $num2 = isset($_SESSION['spam_num2']) ? (int)$_SESSION['spam_num2'] : 0;
+    unset($_SESSION['spam_num1'], $_SESSION['spam_num2']);
+    $sum = isset($_POST['sum']) ? trim($_POST['sum']) : null;
+    if ($sum === null || $sum === '') {
         throw new Typecho_Widget_Exception(_t('抱歉：请输入验证码','评论失败'));
-        break;
-        default:
+    }
+    if (!is_numeric($sum) || (int)$sum !== $num1 + $num2) {
         throw new Typecho_Widget_Exception(_t('抱歉：验证码错误，请返回重试','评论失败'));
-
-	};
+    }
     return $comment;
 }
 

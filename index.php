@@ -24,7 +24,7 @@ if($sticky && $this->is('index') || $this->is('front')){
     foreach($sticky_cids as $i => $cid) {
         if($i == 0) $select1->where('cid = ?', $cid);
         else $select1->orWhere('cid = ?', $cid);
-        $order .= " when $cid then $i";
+        $order .= " when " . (int)$cid . " then $i";
         $select2->where('table.contents.cid != ?', $cid); //避免重复
     }
     if ($order) $select1->order('', "(case cid$order end)"); //置顶文章的顺序 按 $sticky 中 文章ID顺序
